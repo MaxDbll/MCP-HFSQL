@@ -1,2 +1,65 @@
-/venv
-/__pycache__
+# Environnements virtuels
+venv/
+.venv/
+env/
+ENV/
+
+# Fichiers Python compilés
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Tests unitaires / couverture
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Logs et bases de données
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Environnement de développement
+.env
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Fichiers générés par MCP
+.mcp/
+.mcp-cache/
+
+# Fichiers Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Fichiers MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Dépendances Node (si utilisées pour le frontend)
+node_modules/
