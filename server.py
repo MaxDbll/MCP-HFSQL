@@ -3,11 +3,18 @@ from mcp.types import Resource
 from mcp.server.fastmcp import FastMCP
 import json 
 from mcp.server.fastmcp.prompts import base
+import pypyodbc
 
 from db_connect import connect_to_db
+from db_connect import DatabaseConnection
 
 mcp = FastMCP("Demo", dependencies=["pypyodbc"])
 
+def connection_string():
+    return """
+    DRIVER={HFSQL};Server Name=127.0.0.1;Server Port=4900;
+    Database=python_odbc;UID=admin;IntegrityCheck=1
+            """
         
 @mcp.resource('tables://list-tables', description="List all tables in the database", mime_type="application/json")
 def list_tables() -> Resource:
@@ -16,19 +23,11 @@ def list_tables() -> Resource:
     Returns:
         Resource: A resource containing the list of tables names.
     """
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        return str(e)
-    cursor = conn.cursor()
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor: pypyodbc.Cursor = conn.cursor()
+        tables: list[str] = [table[2] for table in cursor.tables()]
     
-    tables: list[str] = []
-    
-    # Loop over the tables in the database and append their names to the list
-    tables = [table[2] for table in cursor.tables()]
-    
-    conn.close()
-    return json.dumps(tables)
+        return json.dumps(tables)
 
 
 @mcp.resource('tables://table-columns/{table_name}', description="List all columns in a table as a list of resources")
@@ -231,12 +230,6 @@ def use_database_schema() -> list[base.Message]:
     ]
 
 if __name__ == "__main__":
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        print(e)
-    
-    cursor = conn.cursor()
     
     # tables: list[str] = []
     # for table in cursor.tables():
@@ -250,4 +243,4 @@ if __name__ == "__main__":
     # conn.close()
     # print( ' '.join([str(x) for x in columns]))
     
-    print(select_query("SELECT * FROM Client"))
+    print(list_tables())
