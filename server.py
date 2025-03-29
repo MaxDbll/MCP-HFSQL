@@ -40,22 +40,17 @@ def table_columns_resource(table_name: str) -> list[Resource]:
     Returns:
         list[Resource]: A list of resources containing the list of columns informations.
     """
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        return str(e)
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor()
+        columns: list[Resource] = []
+        # Get the the name of each column in the table as list of strings
+        for column_info in cursor.columns(table=table_name):
+            resource: Resource = Resource(
+            uri=f'tables://table-columns/{table_name}/{column_info[1]}',
+            name=column_info[1],
+            description=column_info[9],)
+            columns.append(resource)
     
-    cursor = conn.cursor()
-    columns: list[Resource] = []
-    # Get the the name of each column in the table as list of strings
-    for column_info in cursor.columns(table=table_name):
-        resource: Resource = Resource(
-        uri=f'tables://table-columns/{table_name}/{column_info[1]}',
-        name=column_info[1],
-        description=column_info[9],)
-        columns.append(resource)
-    
-    conn.close()
     return columns
 
 @mcp.tool(name="list_tables", description="List all tables in the database")
@@ -65,19 +60,14 @@ def list_tables_tool() -> str:
     Returns:
         str: A JSON string containing the list of tables names.
     """
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        return str(e)
-    
-    cursor = conn.cursor()
-    tables: list[str] = []
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor()
+        tables: list[str] = []
 
-    # Loop over the tables in the database
-    for table_info in cursor.tables():
-        tables.append(table_info[2])
+        # Loop over the tables in the database
+        for table_info in cursor.tables():
+            tables.append(table_info[2])
     
-    conn.close()
     return json.dumps(tables)
 
 @mcp.tool(name="list_tables_with_columns", description="List all tables in the database along with their columns")
@@ -87,21 +77,16 @@ def list_tables_with_columns() -> str:
     Returns:
         str: A JSON string containing the list of tables and their columns.
     """
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        return str(e)
-    
-    cursor = conn.cursor()
-    tables_with_columns = {}
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor()
+        tables_with_columns = {}
 
-    # Loop over the tables in the database
-    for table_info in cursor.tables():
-        table_name = table_info[2]
-        columns = [column_info[1] for column_info in cursor.columns(table=table_name)]
-        tables_with_columns[table_name] = columns
+        # Loop over the tables in the database
+        for table_info in cursor.tables():
+            table_name = table_info[2]
+            columns = [column_info[1] for column_info in cursor.columns(table=table_name)]
+            tables_with_columns[table_name] = columns
     
-    conn.close()
     return json.dumps(tables_with_columns)
 
 @mcp.tool(name="list_columns", description="List all columns in a table")
@@ -114,19 +99,14 @@ def list_columns(table_name: str) -> str:
     Returns:
         str: A JSON string containing the list of columns names.
     """
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        return str(e)
-    
-    cursor = conn.cursor()
-    columns: list[str] = []
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor()
+        columns: list[str] = []
 
-    # Get the the name of each column in the table as list of strings
-    for column_info in cursor.columns(table=table_name):
-        columns.append(column_info[1])
+        # Get the the name of each column in the table as list of strings
+        for column_info in cursor.columns(table=table_name):
+            columns.append(column_info[1])
     
-    conn.close()
     return json.dumps(columns)
 
 
@@ -143,24 +123,19 @@ def select_query(query:str) -> json:
     if not query.lower().startswith("select"):
         return "Query must start with 'SELECT'"
     
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        return str(e)
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        
+        # Fetch all rows from the executed query
+        rows = cursor.fetchall()
+        
+        # Get column names from cursor description
+        columns = [column[0] for column in cursor.description]
+        
+        # Convert rows to list of dictionaries
+        result = [dict(zip(columns, row)) for row in rows]
     
-    cursor = conn.cursor()
-    cursor.execute(query)
-    
-    # Fetch all rows from the executed query
-    rows = cursor.fetchall()
-    
-    # Get column names from cursor description
-    columns = [column[0] for column in cursor.description]
-    
-    # Convert rows to list of dictionaries
-    result = [dict(zip(columns, row)) for row in rows]
-    
-    conn.close()
     return json.dumps(result)
 
 
@@ -177,21 +152,14 @@ def insert_query(query:str) -> str:
     if not query.lower().startswith("insert"):
         return "Query must start with 'INSERT'"
     
-    try:
-        conn = connect_to_db()
-    except Exception as e:
-        return str(e)
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        
+        # Commit the changes to the database
+        conn.commit()
     
-    cursor = conn.cursor()
-    cursor.execute(query)
-    
-    # Commit the changes to the database
-    conn.commit()
-    
-    conn.close()
     return "Insert operation completed successfully."
-
-
 
 @mcp.prompt(name="help_build_query", description="Help the user build a query")
 def help_build_query(table_name: str) -> list[base.Message]:
@@ -230,17 +198,4 @@ def use_database_schema() -> list[base.Message]:
     ]
 
 if __name__ == "__main__":
-    
-    # tables: list[str] = []
-    # for table in cursor.tables():
-    #     tables.append(table[2])
-    
-    # print( ' '.join([str(x) for x in tables]))
-    
-    # columns = []
-    # for column_info in cursor.columns(table='Client'):
-    #     columns.append(column_info[1])
-    # conn.close()
-    # print( ' '.join([str(x) for x in columns]))
-    
     print(list_tables())
