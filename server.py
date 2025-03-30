@@ -2,6 +2,7 @@ from typing import Optional
 from mcp.types import Resource
 from mcp.server.fastmcp import FastMCP
 import json 
+import os
 
 from mcp.server.fastmcp.prompts import base
 import pypyodbc
@@ -11,6 +12,20 @@ from db_connect import DatabaseConnection
 mcp = FastMCP("Demo", dependencies=["pypyodbc"])
 
 def connection_string():
+    host: str = os.getenv("HFSQL_HOST", "localhost")
+    port: str = os.getenv("HFSQL_PORT", "4900")
+    database: str = os.getenv("HFSQL_DATABASE", "python_odbc")
+    user: str = os.getenv("HFSQL_USER", "admin")
+    password: str = os.getenv("HFSQL_PASSWORD", "")
+    
+    if host and port and database and user:
+        return f"""
+        DRIVER={{HFSQL}};Server Name={host};Server Port={port};
+        Database={database};UID={user};PWD={password};IntegrityCheck=1
+        """
+    else:
+        raise ValueError("Missing environment variables for database connection.")
+    
     return """
     DRIVER={HFSQL};Server Name=127.0.0.1;Server Port=4900;
     Database=python_odbc;UID=admin;IntegrityCheck=1
