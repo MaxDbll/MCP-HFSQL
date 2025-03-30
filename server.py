@@ -9,7 +9,7 @@ import pypyodbc
 
 from db_connect import DatabaseConnection
 
-mcp = FastMCP("Demo", dependencies=["pypyodbc"])
+mcp = FastMCP("HFSQL Assistant", dependencies=["pypyodbc"])
 
 def connection_string():
     host: str = os.getenv("HFSQL_HOST", "localhost")
@@ -26,10 +26,7 @@ def connection_string():
     else:
         raise ValueError("Missing environment variables for database connection.")
     
-    return """
-    DRIVER={HFSQL};Server Name=127.0.0.1;Server Port=4900;
-    Database=python_odbc;UID=admin;IntegrityCheck=1
-            """
+
         
 @DatabaseConnection.error_handler
 @mcp.resource('tables://list-tables', description="List all tables in the database", mime_type="application/json")
