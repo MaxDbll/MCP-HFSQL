@@ -1,6 +1,4 @@
 import pypyodbc
-from typing import Optional
-
 
 
 class DatabaseConnection:
@@ -16,9 +14,9 @@ class DatabaseConnection:
             self.connection = pypyodbc.connect(self.connection_string)
             self.cursor = self.connection.cursor()
             print("Connexion réussie!")
-            return self.connection
+            return self
         except Exception as e:
-            print(f"Erreur de connexion: {e}")
+            raise Exception(f"Erreur de connexion: {e}")
 
             
             
@@ -30,16 +28,14 @@ class DatabaseConnection:
     
     
 
-def connect_to_db(dsn_name: str = "") -> Optional[pypyodbc.Connection]:
-    """Connexion directe via pypyodbc à une base HFSQL (WinDev)"""
-    try:
-        connection_string: str = """
-        DRIVER={HFSQL};Server Name=127.0.0.1;Server Port=4900;
-Database=python_odbc;UID=admin;IntegrityCheck=1
-        """
-        conn: pypyodbc.Connection = pypyodbc.connect(connection_string)
-        print("Connexion réussie!")
-        return conn
-    except Exception as e:
-        print(f"Erreur de connexion: {e}")
-        return None
+    # Error handler decorator
+    @staticmethod
+    def error_handler(func):
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except pypyodbc.Error as e:
+                return f"Database error: {e}"
+            except Exception as e:
+                return f"An error occurred: {e}"
+        return wrapper

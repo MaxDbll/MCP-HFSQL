@@ -2,10 +2,10 @@ from typing import Optional
 from mcp.types import Resource
 from mcp.server.fastmcp import FastMCP
 import json 
+
 from mcp.server.fastmcp.prompts import base
 import pypyodbc
 
-from db_connect import connect_to_db
 from db_connect import DatabaseConnection
 
 mcp = FastMCP("Demo", dependencies=["pypyodbc"])
@@ -16,6 +16,7 @@ def connection_string():
     Database=python_odbc;UID=admin;IntegrityCheck=1
             """
         
+@DatabaseConnection.error_handler
 @mcp.resource('tables://list-tables', description="List all tables in the database", mime_type="application/json")
 def list_tables() -> Resource:
     """List all tables in the database.
@@ -24,12 +25,13 @@ def list_tables() -> Resource:
         Resource: A resource containing the list of tables names.
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor: pypyodbc.Cursor = conn.cursor()
+        cursor: pypyodbc.Cursor = conn.cursor
         tables: list[str] = [table[2] for table in cursor.tables()]
     
         return json.dumps(tables)
+    
 
-
+@DatabaseConnection.error_handler
 @mcp.resource('tables://table-columns/{table_name}', description="List all columns in a table as a list of resources")
 def table_columns_resource(table_name: str) -> list[Resource]:
     """List all columns in a table as a list of resources.
@@ -41,7 +43,7 @@ def table_columns_resource(table_name: str) -> list[Resource]:
         list[Resource]: A list of resources containing the list of columns informations.
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor = conn.cursor()
+        cursor = conn.cursor
         columns: list[Resource] = []
         # Get the the name of each column in the table as list of strings
         for column_info in cursor.columns(table=table_name):
@@ -53,6 +55,7 @@ def table_columns_resource(table_name: str) -> list[Resource]:
     
     return columns
 
+@DatabaseConnection.error_handler
 @mcp.tool(name="list_tables", description="List all tables in the database")
 def list_tables_tool() -> str:
     """List all tables in the database.
@@ -61,7 +64,7 @@ def list_tables_tool() -> str:
         str: A JSON string containing the list of tables names.
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor = conn.cursor()
+        cursor = conn.cursor
         tables: list[str] = []
 
         # Loop over the tables in the database
@@ -70,6 +73,7 @@ def list_tables_tool() -> str:
     
     return json.dumps(tables)
 
+@DatabaseConnection.error_handler
 @mcp.tool(name="list_tables_with_columns", description="List all tables in the database along with their columns")
 def list_tables_with_columns() -> str:
     """List all tables in the database along with their columns.
@@ -78,7 +82,7 @@ def list_tables_with_columns() -> str:
         str: A JSON string containing the list of tables and their columns.
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor = conn.cursor()
+        cursor = conn.cursor
         tables_with_columns = {}
 
         # Loop over the tables in the database
@@ -89,6 +93,7 @@ def list_tables_with_columns() -> str:
     
     return json.dumps(tables_with_columns)
 
+@DatabaseConnection.error_handler
 @mcp.tool(name="list_columns", description="List all columns in a table")
 def list_columns(table_name: str) -> str:
     """List all columns in a table.
@@ -100,7 +105,7 @@ def list_columns(table_name: str) -> str:
         str: A JSON string containing the list of columns names.
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor = conn.cursor()
+        cursor = conn.cursor
         columns: list[str] = []
 
         # Get the the name of each column in the table as list of strings
@@ -110,6 +115,7 @@ def list_columns(table_name: str) -> str:
     return json.dumps(columns)
 
 
+@DatabaseConnection.error_handler
 @mcp.tool(name="select_query", description="Execute a select query")
 def select_query(query:str) -> json:
     """Execute a select query and return the result as a JSON object.
@@ -124,7 +130,7 @@ def select_query(query:str) -> json:
         return "Query must start with 'SELECT'"
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor = conn.cursor()
+        cursor = conn.cursor
         cursor.execute(query)
         
         # Fetch all rows from the executed query
@@ -139,6 +145,7 @@ def select_query(query:str) -> json:
     return json.dumps(result)
 
 
+@DatabaseConnection.error_handler
 @mcp.tool(name="insert_query", description="Execute an insert query")
 def insert_query(query:str) -> str:
     """Execute an insert query.
@@ -153,13 +160,14 @@ def insert_query(query:str) -> str:
         return "Query must start with 'INSERT'"
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor = conn.cursor()
+        cursor = conn.cursor
         cursor.execute(query)
         
         # Commit the changes to the database
         conn.commit()
     
     return "Insert operation completed successfully."
+
 
 @mcp.prompt(name="help_build_query", description="Help the user build a query")
 def help_build_query(table_name: str) -> list[base.Message]:
