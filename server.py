@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 from mcp.types import Resource
 from mcp.server.fastmcp import FastMCP
 from pydantic import AnyUrl
@@ -15,7 +15,7 @@ mcp = FastMCP("HFSQL Assistant", dependencies=["pypyodbc"])
 def connection_string():
     host: str = os.getenv("HFSQL_HOST", "localhost")
     port: str = os.getenv("HFSQL_PORT", "4900")
-    database: str = os.getenv("HFSQL_DATABASE", "python_odbc")
+    database: str = os.getenv("HFSQL_DATABASE", "test_odbc")
     user: str = os.getenv("HFSQL_USER", "admin")
     password: str = os.getenv("HFSQL_PASSWORD", "")
     
@@ -41,8 +41,7 @@ def get_table_names() -> str:
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor: pypyodbc.Cursor = conn.cursor
         tables: list = [table[2] for table in cursor.tables()]
-    
-        print(f"Tables récupérées: {tables}")
+
         return json.dumps(tables)
     
 
@@ -68,8 +67,7 @@ def get_table_columns(table_name: str) -> list[Resource]:
             name=column_name,
             description=str(column_info[9]) if column_info[9] else "",)
             columns.append(resource)
-    print(f"Colonnes récupérées pour la table {table_name}: {columns}")
-    return columns
+
     return columns
 
 @DatabaseConnection.error_handler
@@ -87,30 +85,8 @@ def get_tables() -> str:
         # Loop over the tables in the database
         for table_info in cursor.tables():
             tables.append(table_info[2])
-    
-    print(f"Tables récupérées: {tables}")
+
     return json.dumps(tables)
-
-@DatabaseConnection.error_handler
-@mcp.tool(name="list_tables_with_columns", description="List all tables in the database along with their columns")
-def get_tables_with_columns() -> str:
-    """List all tables in the database along with their columns.
-
-    Returns:
-        str: A JSON string containing the list of tables and their columns.
-    """
-    with DatabaseConnection(connection_string=connection_string()) as conn:
-        cursor = conn.cursor
-        tables_with_columns = {}
-
-        # Loop over the tables in the database
-        for table_info in cursor.tables():
-            table_name = table_info[2]
-            columns = [column_info[1] for column_info in cursor.columns(table=table_name)]
-            tables_with_columns[table_name] = columns
-    
-    print(f"Tables avec colonnes récupérées: {tables_with_columns}")
-    return json.dumps(tables_with_columns)
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="list_columns", description="List all columns in a table")
@@ -125,19 +101,23 @@ def get_column_names(table_name: str) -> str:
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
-        columns: list[str | None] = []
+        columns: list[dict[str, Any]] = []
 
         # Get the the name of each column in the table as list of strings
         for column_info in cursor.columns(table=table_name):
-            columns.append(column_info[1])
+            if column_info[1]:  # Ensure the column index exists
+                columns.append({
+                    "name": str(column_info[1]),
+                    "type": str(column_info[3]) if column_info[3] else "",
+                    "description": str(column_info[9]) if column_info[9] else ""
+                })
     
-    print(f"Colonnes récupérées pour la table {table_name}: {columns}")
     return json.dumps(columns)
 
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="select_query", description="Execute a select query")
-def execute_select_query(query:str, params:tuple) -> str:
+def execute_select_query(query:str, params:tuple = ()) -> str:
     """Execute a select query and return the result as a JSON object.
 
     Args:
@@ -150,7 +130,7 @@ def execute_select_query(query:str, params:tuple) -> str:
     if not query.lower().startswith("select"):
         return "Query must start with 'SELECT'"
     
-    if query.find(";") != -1:
+    if query.find(";") > 1:
         return "Query must not contain ';'"
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
@@ -169,13 +149,12 @@ def execute_select_query(query:str, params:tuple) -> str:
         # Convert rows to list of dictionaries
         result = [dict(zip(columns, row)) for row in rows]
     
-    print(f"Résultat de la requête SELECT: {result}")
     return json.dumps(result)
 
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="insert_query", description="Execute an insert query")
-def execute_insert_query(query:str, params:tuple) -> str:
+def execute_insert_query(query:str, params:tuple=()) -> str:
     """Execute an insert query.
 
     Args:
@@ -188,7 +167,7 @@ def execute_insert_query(query:str, params:tuple) -> str:
     if not query.lower().startswith("insert"):
         return "Query must start with 'INSERT'"
     
-    if query.find(";") != -1:
+    if query.find(";") > 1:
         return "Query must not contain ';'"
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
@@ -198,7 +177,6 @@ def execute_insert_query(query:str, params:tuple) -> str:
         # Commit the changes to the database
         cursor.commit()
     
-    print("Opération d'insertion réussie.")
     return "Insert operation completed successfully."
 
 
@@ -217,7 +195,7 @@ def execute_update_query(query:str, params:tuple) -> str:
     if not query.lower().startswith("update"):
         return "Query must start with 'UPDATE'"
     
-    if query.find(";") != -1:
+    if query.find(";") > 1:
         return "Query must not contain ';'"
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
@@ -227,7 +205,6 @@ def execute_update_query(query:str, params:tuple) -> str:
         # Commit the changes to the database
         cursor.commit()
     
-    print("Opération de mise à jour réussie.")
     return "Update operation completed successfully."
 
 

@@ -1,4 +1,5 @@
 import pypyodbc
+import json
 
 
 class DatabaseConnection:
@@ -12,7 +13,6 @@ class DatabaseConnection:
         try:
             self.connection = pypyodbc.connect(self.connection_string)
             self.cursor = self.connection.cursor()
-            print("Connexion réussie!")
             return self
         except Exception as e:
             raise Exception(f"Erreur de connexion: {e}")
@@ -22,7 +22,6 @@ class DatabaseConnection:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connection:
             self.connection.close()
-            print("Connexion fermée!")
         return False
     
     
@@ -34,7 +33,7 @@ class DatabaseConnection:
             try:
                 return func(*args, **kwargs)
             except pypyodbc.Error as e:
-                return f"Database error: {e}"
+                return json.dumps({"error": f"Database error: {e}"})
             except Exception as e:
-                return f"An error occurred: {e}"
+                return json.dumps({"error": f"An error occurred: {e}"})
         return wrapper
