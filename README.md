@@ -1,4 +1,4 @@
-# Serveur MCP pour Interaction avec les Bases de Données HFSQL
+# Serveur MCP Bases de Données HFSQL
 
 ## Description
 
