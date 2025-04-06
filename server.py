@@ -1,6 +1,7 @@
 from typing import Optional
 from mcp.types import Resource
 from mcp.server.fastmcp import FastMCP
+from pydantic import AnyUrl
 import json 
 import os
 
@@ -24,13 +25,14 @@ def connection_string():
         Database={database};UID={user};PWD={password};IntegrityCheck=1
         """
     else:
+        print("Erreur: Variables d'environnement manquantes pour la connexion à la base de données.")
         raise ValueError("Missing environment variables for database connection.")
     
 
         
 @DatabaseConnection.error_handler
 @mcp.resource('tables://tables', description="List all tables in the database", mime_type="application/json")
-def get_table_names() -> Resource:
+def get_table_names() -> str:
     """List all tables in the database.
 
     Returns:
@@ -38,8 +40,9 @@ def get_table_names() -> Resource:
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor: pypyodbc.Cursor = conn.cursor
-        tables: list[str] = [table[2] for table in cursor.tables()]
+        tables: list = [table[2] for table in cursor.tables()]
     
+        print(f"Tables récupérées: {tables}")
         return json.dumps(tables)
     
 
@@ -59,12 +62,14 @@ def get_table_columns(table_name: str) -> list[Resource]:
         columns: list[Resource] = []
         # Get the the name of each column in the table as list of strings
         for column_info in cursor.columns(table=table_name):
+            column_name = str(column_info[1]) if column_info[1] else ""
             resource: Resource = Resource(
-            uri=f'tables://{table_name}/columns/{column_info[1]}',
-            name=column_info[1],
-            description=column_info[9],)
+            uri=AnyUrl(f'tables://{table_name}/columns/{column_name}'),
+            name=column_name,
+            description=str(column_info[9]) if column_info[9] else "",)
             columns.append(resource)
-    
+    print(f"Colonnes récupérées pour la table {table_name}: {columns}")
+    return columns
     return columns
 
 @DatabaseConnection.error_handler
@@ -77,12 +82,13 @@ def get_tables() -> str:
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
-        tables: list[str] = []
+        tables: list[str | None] = []
 
         # Loop over the tables in the database
         for table_info in cursor.tables():
             tables.append(table_info[2])
     
+    print(f"Tables récupérées: {tables}")
     return json.dumps(tables)
 
 @DatabaseConnection.error_handler
@@ -103,6 +109,7 @@ def get_tables_with_columns() -> str:
             columns = [column_info[1] for column_info in cursor.columns(table=table_name)]
             tables_with_columns[table_name] = columns
     
+    print(f"Tables avec colonnes récupérées: {tables_with_columns}")
     return json.dumps(tables_with_columns)
 
 @DatabaseConnection.error_handler
@@ -118,18 +125,19 @@ def get_column_names(table_name: str) -> str:
     """
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
-        columns: list[str] = []
+        columns: list[str | None] = []
 
         # Get the the name of each column in the table as list of strings
         for column_info in cursor.columns(table=table_name):
             columns.append(column_info[1])
     
+    print(f"Colonnes récupérées pour la table {table_name}: {columns}")
     return json.dumps(columns)
 
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="select_query", description="Execute a select query")
-def execute_select_query(query:str, params:tuple) -> json:
+def execute_select_query(query:str, params:tuple) -> str:
     """Execute a select query and return the result as a JSON object.
 
     Args:
@@ -153,11 +161,15 @@ def execute_select_query(query:str, params:tuple) -> json:
         rows = cursor.fetchall()
         
         # Get column names from cursor description
+        if cursor.description is None:
+            return "No results found."
+        
         columns = [column[0] for column in cursor.description]
         
         # Convert rows to list of dictionaries
         result = [dict(zip(columns, row)) for row in rows]
     
+    print(f"Résultat de la requête SELECT: {result}")
     return json.dumps(result)
 
 
@@ -184,8 +196,9 @@ def execute_insert_query(query:str, params:tuple) -> str:
         cursor.execute(query, params=params)
         
         # Commit the changes to the database
-        conn.commit()
+        cursor.commit()
     
+    print("Opération d'insertion réussie.")
     return "Insert operation completed successfully."
 
 
@@ -212,8 +225,9 @@ def execute_update_query(query:str, params:tuple) -> str:
         cursor.execute(query, params=params)
         
         # Commit the changes to the database
-        conn.commit()
+        cursor.commit()
     
+    print("Opération de mise à jour réussie.")
     return "Update operation completed successfully."
 
 
@@ -249,7 +263,7 @@ def prompt_use_database_schema() -> list[base.Message]:
         list[base.Message]: A list of messages to guide the user in using the database schema.
     """
     return [
-        base.SystemMessage("Utilisez la commande /list_tables pour explorer le schéma de la base de données"),
+        base.UserMessage("Utilisez la commande /list_tables pour explorer le schéma de la base de données"),
         base.AssistantMessage("Je peux vous aider à explorer votre base de données. Voulez-vous voir la liste des tables disponibles?")
     ]
 

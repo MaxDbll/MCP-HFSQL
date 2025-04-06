@@ -4,12 +4,11 @@ import pypyodbc
 class DatabaseConnection:
     def __init__(self, connection_string: str):
         self.connection_string: str = connection_string
-        self.connection: pypyodbc.Connection | None = None
-        self.cursor: pypyodbc.Cursor | None = None
+        self.connection: pypyodbc.Connection
+        self.cursor: pypyodbc.Cursor
      
     
     def __enter__(self):
-        self.connection = None
         try:
             self.connection = pypyodbc.connect(self.connection_string)
             self.cursor = self.connection.cursor()
