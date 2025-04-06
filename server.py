@@ -29,8 +29,8 @@ def connection_string():
 
         
 @DatabaseConnection.error_handler
-@mcp.resource('tables://list-tables', description="List all tables in the database", mime_type="application/json")
-def list_tables() -> Resource:
+@mcp.resource('tables://tables', description="List all tables in the database", mime_type="application/json")
+def get_table_names() -> Resource:
     """List all tables in the database.
 
     Returns:
@@ -44,8 +44,8 @@ def list_tables() -> Resource:
     
 
 @DatabaseConnection.error_handler
-@mcp.resource('tables://table-columns/{table_name}', description="List all columns in a table as a list of resources")
-def table_columns_resource(table_name: str) -> list[Resource]:
+@mcp.resource('tables://{table_name}/columns', description="List all columns in a table as a list of resources")
+def get_table_columns(table_name: str) -> list[Resource]:
     """List all columns in a table as a list of resources.
 
     Args:
@@ -60,7 +60,7 @@ def table_columns_resource(table_name: str) -> list[Resource]:
         # Get the the name of each column in the table as list of strings
         for column_info in cursor.columns(table=table_name):
             resource: Resource = Resource(
-            uri=f'tables://table-columns/{table_name}/{column_info[1]}',
+            uri=f'tables://{table_name}/columns/{column_info[1]}',
             name=column_info[1],
             description=column_info[9],)
             columns.append(resource)
@@ -69,7 +69,7 @@ def table_columns_resource(table_name: str) -> list[Resource]:
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="list_tables", description="List all tables in the database")
-def list_tables_tool() -> str:
+def get_tables() -> str:
     """List all tables in the database.
 
     Returns:
@@ -87,7 +87,7 @@ def list_tables_tool() -> str:
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="list_tables_with_columns", description="List all tables in the database along with their columns")
-def list_tables_with_columns() -> str:
+def get_tables_with_columns() -> str:
     """List all tables in the database along with their columns.
 
     Returns:
@@ -107,7 +107,7 @@ def list_tables_with_columns() -> str:
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="list_columns", description="List all columns in a table")
-def list_columns(table_name: str) -> str:
+def get_column_names(table_name: str) -> str:
     """List all columns in a table.
 
     Args:
@@ -129,11 +129,12 @@ def list_columns(table_name: str) -> str:
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="select_query", description="Execute a select query")
-def select_query(query:str) -> json:
+def execute_select_query(query:str, params:tuple) -> json:
     """Execute a select query and return the result as a JSON object.
 
     Args:
         query (str): The select query to execute.
+        params (tuple): The parameters to use in the query.
 
     Returns:
         json: The result of the query as a JSON object.
@@ -141,9 +142,12 @@ def select_query(query:str) -> json:
     if not query.lower().startswith("select"):
         return "Query must start with 'SELECT'"
     
+    if query.find(";") != -1:
+        return "Query must not contain ';'"
+    
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
-        cursor.execute(query)
+        cursor.execute(query, params)
         
         # Fetch all rows from the executed query
         rows = cursor.fetchall()
@@ -159,21 +163,25 @@ def select_query(query:str) -> json:
 
 @DatabaseConnection.error_handler
 @mcp.tool(name="insert_query", description="Execute an insert query")
-def insert_query(query:str) -> str:
+def execute_insert_query(query:str, params:tuple) -> str:
     """Execute an insert query.
 
     Args:
         query (str): The insert query to execute.
+        params (tuple): The parameters to use in the query.
 
     Returns:
-        str: A message indicating the result of the operation.
+        str: A message indicating the resu lt of the operation.
     """
     if not query.lower().startswith("insert"):
         return "Query must start with 'INSERT'"
     
+    if query.find(";") != -1:
+        return "Query must not contain ';'"
+    
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
-        cursor.execute(query)
+        cursor.execute(query, params=params)
         
         # Commit the changes to the database
         conn.commit()
@@ -181,8 +189,36 @@ def insert_query(query:str) -> str:
     return "Insert operation completed successfully."
 
 
+@DatabaseConnection.error_handler
+@mcp.tool(name="update_query", description="Execute an update query")
+def execute_update_query(query:str, params:tuple) -> str:
+    """Execute an update query.
+
+    Args:
+        query (str): The update query to execute.
+        params (tuple): The parameters to use in the query.
+
+    Returns:
+        str: A message indicating the result of the operation.
+    """
+    if not query.lower().startswith("update"):
+        return "Query must start with 'UPDATE'"
+    
+    if query.find(";") != -1:
+        return "Query must not contain ';'"
+    
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor
+        cursor.execute(query, params=params)
+        
+        # Commit the changes to the database
+        conn.commit()
+    
+    return "Update operation completed successfully."
+
+
 @mcp.prompt(name="help_build_query", description="Help the user build a query")
-def help_build_query(table_name: str) -> list[base.Message]:
+def prompt_build_query(table_name: str) -> list[base.Message]:
     """Prompt the user for help in building a query.
 
     Args:
@@ -199,14 +235,14 @@ def help_build_query(table_name: str) -> list[base.Message]:
 
 
 @mcp.prompt(name="explore_data", description="Explore the data in a table")
-def explore_data(table_name: str) -> list[base.Message]:
+def prompt_explore_data(table_name: str) -> list[base.Message]:
     return [
         base.AssistantMessage(f"Explorons ensemble les données de la table {table_name}."),
         base.AssistantMessage("Souhaitez-vous voir:\n- Les premières lignes\n- Des statistiques descriptives\n- La distribution des valeurs\n- Des corrélations entre colonnes?")
     ]
 
 @mcp.prompt(name="use_database_schema", description="Use the database schema")
-def use_database_schema() -> list[base.Message]:
+def prompt_use_database_schema() -> list[base.Message]:
     """Prompt the user to use the database schema.
 
     Returns:
