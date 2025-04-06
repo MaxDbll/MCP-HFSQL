@@ -254,4 +254,4 @@ def prompt_use_database_schema() -> list[base.Message]:
     ]
 
 if __name__ == "__main__":
-    print(list_tables())
+    print(get_tables())
