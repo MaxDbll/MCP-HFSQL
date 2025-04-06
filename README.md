@@ -109,37 +109,32 @@ Ce serveur MCP récupère ses informations de connexion à la base de données H
     * **Scénario 3 : Requête Assistée**
         * *Utilisateur :* "Je cherche les contacts de la société 'InnovTech' ajoutés cette année."
 
-    * **Scénario 3 : Chiffre d'affaire**
-        * *Utilisateur :* "Quel est le trimestre avec le chiffre d'affaire le plus elevé et celui avec le moins elevé ?"
+    * **Scénario 4 : Chiffre d'affaire**
+        * *Utilisateur :* "Quel est le trimestre avec le chiffre d'affaire le plus élevé et celui avec le moins élevé ?"
 
 ## Exemple d'Intégration Client (Claude Desktop)
 
-Si vous utilisez un client MCP comme Claude Desktop, vous devrez lui indiquer comment lancer *votre* serveur MCP. Voici un exemple de configuration à ajouter dans le fichier `claude_desktop_config.json` (le chemin peut varier) :
+Si vous utilisez un client MCP comme Claude Desktop, vous devrez lui indiquer comment lancer votre serveur MCP. Voici un exemple de configuration à ajouter dans le fichier `claude_desktop_config.json` :
 
 ```json
    "HFSQL Assistant": {
-     "command": "uv",  
+     "command": "uv",
      "args": [
        "run",
-       // Les lignes suivantes avec 'uv' sont spécifiques à son usage
-       // Elles assurent que mcp[cli] et pypyodbc sont disponibles
-       // Si vous n'utilisez pas 'uv', adaptez la commande et les args
        "--with",
        "mcp[cli]",
        "--with",
        "pypyodbc",
-       // --- Fin des args spécifiques à 'uv' ---
-       "mcp", // La commande principale du SDK
-       "run", // La sous-commande pour lancer un serveur
-       // Chemin ABSOLU vers votre script serveur principal
+       "mcp",
+       "run",
        "C:\\Chemin\\Complet\\Vers\\Votre\\Projet\\mcp-hfsql\\server.py"
      ],
      "env": {
-       // Ces variables sont passées par le client au serveur lors du lancement
        "HFSQL_HOST": "localhost",
        "HFSQL_PORT": "4900",
        "HFSQL_DATABASE": "gestioncontacts",
        "HFSQL_USER": "admin",
-       "HFSQL_PASSWORD": "" // Laissez vide si pas de mot de passe
+       "HFSQL_PASSWORD": ""
      }
    }
+```
