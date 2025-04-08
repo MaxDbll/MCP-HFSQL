@@ -1,5 +1,8 @@
 # Serveur MCP pour Bases de Données HFSQL
 
+
+![](https://badge.mcpx.dev?type=server 'MCP Server')
+
 ## Description
 
 Ce projet fournit un serveur basé sur le **Model Context Protocol (MCP)**, permettant aux modèles de langage (comme les agents IA conversationnels) d'interagir avec des bases de données HFSQL C/S.
