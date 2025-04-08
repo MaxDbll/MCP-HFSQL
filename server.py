@@ -127,11 +127,17 @@ def execute_select_query(query:str, params:tuple = ()) -> str:
     Returns:
         json: The result of the query as a JSON object.
     """
+    forbidden_keywords: list[str] = ["insert", "update", "delete", "drop", "create", "alter"]
+    
     if not query.lower().startswith("select"):
         return "Query must start with 'SELECT'"
     
     if query.find(";") > 1:
         return "Query must not contain ';'"
+    
+    if any(keyword in query.lower() for keyword in forbidden_keywords):
+        return "Query contains forbidden keywords."
+
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
@@ -164,11 +170,16 @@ def execute_insert_query(query:str, params:tuple=()) -> str:
     Returns:
         str: A message indicating the resu lt of the operation.
     """
+    forbidden_keywords: list[str] = ["select", "update", "delete", "drop", "create", "alter"]
+    
     if not query.lower().startswith("insert"):
         return "Query must start with 'INSERT'"
     
     if query.find(";") > 1:
         return "Query must not contain ';'"
+    
+    if any(keyword in query.lower() for keyword in forbidden_keywords):
+        return "Query contains forbidden keywords."
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
@@ -192,11 +203,16 @@ def execute_update_query(query:str, params:tuple) -> str:
     Returns:
         str: A message indicating the result of the operation.
     """
+    forbidden_keywords: list[str] = ["select", "insert", "delete", "drop", "create", "alter"]
+    
     if not query.lower().startswith("update"):
         return "Query must start with 'UPDATE'"
     
     if query.find(";") > 1:
         return "Query must not contain ';'"
+    
+    if any(keyword in query.lower() for keyword in forbidden_keywords):
+        return "Query contains forbidden keywords."
     
     with DatabaseConnection(connection_string=connection_string()) as conn:
         cursor = conn.cursor
@@ -206,6 +222,39 @@ def execute_update_query(query:str, params:tuple) -> str:
         cursor.commit()
     
     return "Update operation completed successfully."
+
+
+@DatabaseConnection.error_handler
+@mcp.tool(name="delete_query", description="Execute a delete query")
+def execute_delete_query(query:str, params:tuple) -> str:
+    """Execute a delete query.
+
+    Args:
+        query (str): The delete query to execute.
+        params (tuple): The parameters to use in the query.
+
+    Returns:
+        str: A message indicating the result of the operation.
+    """
+    forbidden_keywords: list[str] = ["select", "insert", "update", "drop", "create", "alter"]
+    
+    if not query.lower().startswith("delete"):
+        return "Query must start with 'DELETE'"
+    
+    if query.find(";") > 1:
+        return "Query must not contain ';'"
+    
+    if any(keyword in query.lower() for keyword in forbidden_keywords):
+        return "Query contains forbidden keywords."
+    
+    with DatabaseConnection(connection_string=connection_string()) as conn:
+        cursor = conn.cursor
+        cursor.execute(query, params=params)
+        
+        # Commit the changes to the database
+        cursor.commit()
+    
+    return "Delete operation completed successfully."
 
 
 @mcp.prompt(name="help_build_query", description="Help the user build a query")
